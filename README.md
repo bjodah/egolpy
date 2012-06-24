@@ -84,13 +84,13 @@ Below is the script generating the basic rules of game:
 
 Here is how `rules` is read:
 * For each cell which is **DEAD**:
-    ** Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
-        *** If the number of **ALIVE** cells equals **3** the new state is **ALIVE**
-    ** If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
+    * Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
+        * If the number of **ALIVE** cells equals **3** the new state is **ALIVE**
+    * If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
 * For each cell which is **ALIVE**:
-    ** Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
-        *** If the number of **ALIVE** cells equals **2** or **3** the new state is **ALIVE**
-    ** If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
+    * Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
+        * If the number of **ALIVE** cells equals **2** or **3** the new state is **ALIVE**
+    * If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
 
 The colors used to represent the states are given in colormap, the mouse buttons is mapped to **state_setter** function in **button_action_map**
 
