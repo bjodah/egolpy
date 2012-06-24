@@ -24,4 +24,4 @@ button_action_map = {(1,0,0): ('state_setter',
                                    ),}
 
 pickle.dump((rules, colormap, button_action_map),
-            open('egol.rules','wb'))
+            open('gol.rules','wb'))

@@ -96,6 +96,11 @@ Here is how `rules` is read:
 
 The colors used to represent the states are given in colormap, the mouse buttons is mapped to **state_setter** function in **button_action_map**
 
+After having edited the rules generating script *it is important to remember to generate the corresponding rules file*:
+    python mk_gol_rules.py
+
+Now we can invoke `egolpy.py` with `-r gol.rules`.
+
 ## Possible future extensions
 Feel free to write them and make a pull request at github:
 - Write alternative backends for graphics
