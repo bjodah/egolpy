@@ -7,7 +7,7 @@ The graphical interface relies on pygame and ingame controls are mapped to keybo
 This package is written in python, i.e. no compilation is required.
 However, in order to speed facilitate rapid development the package relies on pygame for graphical presentation.
 
-In order to get a copy of egolpy execute:
+In order to get a copy of Egolpy execute:
 
     git clone https://github.com/bjodah/egolpy.git
 
