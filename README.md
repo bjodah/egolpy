@@ -9,11 +9,11 @@ However, in order to speed facilitate rapid development the package relies on py
 
 In order to get a copy of egolpy execute:
 
-     git clone https://github.com/bjodah/egolpy.git
+    git clone https://github.com/bjodah/egolpy.git
 
 In order to get stated execute e.g.:
 
-   python egolpy.py -x 80 -y 80 -W 400 -H 400 -r 4gol.rules -p -l 4gol.txt -s 4gol_save.txt -n 2 -u 200
+    python egolpy.py -x 80 -y 80 -W 400 -H 400 -r 4gol.rules -p -l 4gol.txt -s 4gol_save.txt -n 2 -u 200
 
 (for further information on invocation see help by executing e.g. `python egolpy.py --help`)
 
@@ -82,7 +82,17 @@ Below is the script generating the basic rules of game:
     pickle.dump((rules, colormap, button_action_map),
                 open('egol.rules','wb'))
 
+Here is how `rules` is read:
+* For each cell which is **DEAD**:
+    ** Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
+        *** If the number of **ALIVE** cells equals **3** the new state is **ALIVE**
+    ** If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
+* For each cell which is **ALIVE**:
+    ** Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
+        *** If the number of **ALIVE** cells equals **2** or **3** the new state is **ALIVE**
+    ** If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
 
+The colors used to represent the states are given in colormap, the mouse buttons is mapped to **state_setter** function in **button_action_map**
 
 ## Possible future extensions
 Feel free to write them and make a pull request at github:
