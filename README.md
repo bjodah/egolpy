@@ -112,7 +112,7 @@ Latest version is available at github.com/bjodah/egolpy
 
 
 ## Contact information
-- Author of python package: Björn Ingvar Dahlgren and Axel Ingvar Dahlgren
+- Author of python package: Björn Ingvar Dahlgren
 - Email (@gmail.com): bjodah
 
 ## License information
