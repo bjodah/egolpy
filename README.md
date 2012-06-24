@@ -1,4 +1,5 @@
 ## Introduction
+![Alt Egolpy 4gol.rules screenshot (run cmd from 4gol.cmd)](https://github.com/bjodah/egolpy/raw/master/screenshot.png)
 This open source python package Egolpy (Extendable Game of Life in Python) provides classes and an interface for running games similiar to Conway's Game of Life (CGOL).
 The graphical interface relies on pygame and ingame controls are mapped to keyboard bindings (the bindings are hardcoded in the main function in egolpy.py). Dimensinos, rules and inital states of the game can be set and loaded at launch by passing arguments to the main program (run `python egolpy.py --help` for more info).
 
