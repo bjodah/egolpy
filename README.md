@@ -21,7 +21,7 @@ In order to get stated execute e.g.:
 This package relies on:
 
 - [Python](http://python.org) 2.7.x or >3.2
-- [Pygame](http://pygame.org) 1.9.1 to treat algebraic expressions symbolically (Ubuntu package name: python-pygame)
+- [Pygame](http://pygame.org) 1.9.1 to enable graphical output (Ubuntu package name: python-pygame)
 
 
 ## Game of Life
