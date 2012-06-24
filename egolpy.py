@@ -52,7 +52,6 @@ def main(nxcells=40, nycells=40, width=400, height=400,
             logger.debug('Couldn\'t open: %s. Using std GOL rules',
                          rule_file)
 
-    # alive_cells=[(1,2),(2,2),(3,2),(3,1),(2,0)], # glider
     game_plan = GamePlan((nxcells,nycells), size,
                    pbc=periodic, rules=rules, colormap=colormap,
                    button_action_map=button_action_map,
@@ -95,12 +94,11 @@ def main(nxcells=40, nycells=40, width=400, height=400,
         else:
             tick += clock.tick()
             if tick > update_interval:
-                #print game_plan._game._state
                 game_plan.propagate()
                 tick = 0
 
-
         pygame.time.wait(25)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
@@ -129,3 +127,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     argd = vars(args) # Argument dictionary
     main(**argd)
+

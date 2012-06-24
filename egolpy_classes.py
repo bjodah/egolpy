@@ -104,13 +104,8 @@ class StateMap(object):
                 entry = ox % self._nx, oy % self._ny
                 if not entry in result:
                     result.append(entry)
-
-        # for ox, oy in product(xrange(x-nth,x+nth+1), xrange(y-nth, y+nth+1)):
-            # if not (ox == x and oy == y):
-            #     entry = ox % self._nx, oy % self._ny
-            #     if not entry in result:
-            #         result.append(entry)
         return result
+
 
     def save(self, outfile):
         ofh = open(outfile,'wt')
@@ -119,6 +114,7 @@ class StateMap(object):
                         xrange(self._nx,self._nx*self._ny+1,self._nx))]
         json.dump(dumpdata,ofh)
         ofh.close()
+
 
     def load(self, infile):
         ifh = open(infile, 'rt')
@@ -129,6 +125,7 @@ class StateMap(object):
             self._data.extend(segm)
         self._redefined = list(self.all_indices)
         self._might_be_affected = self._all_might_be_affected
+
 
     @property
     def all_indices(self):
@@ -146,13 +143,6 @@ class StateMap(object):
             zip(range(0,nx*(ny-1)+1,nx),range(nx,nx*ny+1,nx))]
         return "\n".join([" ".join([str(x) for x in row]) for row in rows])
 
-#rules
-# example_rules: {state0: <state 0 rules>, ... stateN: <state N rules> }
-# state0_rules = {<n_neibours_between_distance_a_b_of_state_N>: (<n_state_outcome_map>, fallback_state)}
-# <n_neighbours_distance_a_b_of_state_N> -> (a,b)
-# <n_state_outcome_map> -> {0:0,1:0,2:1,3:1}
-
-DEAD, ALIVE = 0, 1
 
 
 class Game(object):
@@ -212,17 +202,8 @@ class Game(object):
                 if state != new_state:
                     self._state.redefine(x, y, new_state)
 
-            # for neighbour_criteria, outcome_map in \
-            #         cur_rule.items():
-            #     cumsum = 0
-            # for nth in range(*neighbour_criteria[:2]):
-            #     cumsum += old_state.\
-            #           get_nr_matching_nth_neighbours(x,
-            #              y,
-            #              neighbour_criteria[2],
-            #              nth)
-            # self._state.redefine(x, y, outcome_map[0].get(cumsum,
-            #                     outcome_map[1]))
+
+DEAD, ALIVE = 0, 1
 
 def inverter(state, *args):
     return {DEAD: ALIVE,
@@ -257,13 +238,6 @@ class Gol(Game):
                  ], DEAD),   # catches rule 1 and 3
              }
 
-
-# {DEAD:{(1,2,ALIVE): ({3: ALIVE},  # Rule 4.
-#                      DEAD)},    # Note: range(1,2) == [1]
-#          ALIVE:{(1,2,ALIVE): ({2: ALIVE, # Rule 2
-#                        3: ALIVE} # Rule 2
-#                       ,DEAD)},   # catches rule 1 and 3
-#          }
 
     std_colormap = {ALIVE: WHITE,
             DEAD: BLACK}
@@ -318,6 +292,7 @@ class Gol(Game):
     def all_indices(self):
         return self._state.all_indices
 
+
 class GamePlan(object):
     """
     gameplan class for use with pygame and games of
@@ -362,11 +337,11 @@ class GamePlan(object):
             pygame.draw.line(self._screen, GREY, (0,y), (self._screen_res[0],y))
         pygame.display.flip()
     def draw(self):
-        #self._screen.fill(BLACK)
         redefined = self._game._state.get_redefined_since_last_call()
         if redefined == []: return None
-        for x,y in redefined:#all_indices:
-            pygame.draw.rect(self._screen, self._game.get_color(x,y), self._get_rect(x,y))
+        for x,y in redefined:
+            pygame.draw.rect(self._screen, self._game.get_color(x,y),
+                             self._get_rect(x,y))
         pygame.display.flip()
 
     def click(self, buttons, screen_x, screen_y):
@@ -385,3 +360,4 @@ class GamePlan(object):
     @property
     def all_indices(self):
         return self._game.all_indices
+
