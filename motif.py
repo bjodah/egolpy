@@ -116,7 +116,10 @@ class Motif(object):
             self._state_counter[cur_state] -= 1
             self._state_counter[new_state] += 1
             if self._sparse:
-                self._sparse_data[index] = new_state
+                if new_state == self._bgstate:
+                    self._sparse_data.pop(index)
+                else:
+                    self._sparse_data[index] = new_state
             else:
                 self._dense_data[index] = new_state
 
