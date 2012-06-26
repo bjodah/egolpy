@@ -12,6 +12,9 @@ This project is open source and is released under the
 
 from __future__ import division
 
+# Memory scanner for debug/optimization
+#from meliae import scanner
+
 import sys, pygame, os
 from itertools import product
 import logging
@@ -84,6 +87,9 @@ def main(nxcells=40, nycells=40, width=400, height=400,
                 elif event.key == pygame.K_l:
                     # Save state of game
                     game_plan.load(load_file)
+                # elif event.key == pygame.K_d:
+                #     # Dump memory for debug/optimization
+                # scanner.dump_all_objects('meliae.dump')
                 elif event.key == pygame.K_q or \
                      event.key == pygame.K_ESCAPE:
                     sys.exit(0)
@@ -121,7 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('-u', '--update_interval', type=int, default=250,
                         help="Update interval in milliseconds")
     parser.add_argument('-n', '--largest_neighbour_distance',
-                        type=int, default=250,
+                        type=int, default=1,
                         help="Largest neighbour distance used in rules.")
 
     args = parser.parse_args()
