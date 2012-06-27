@@ -261,11 +261,12 @@ class Game(object):
         for state in range(self._max_state+1):
             # Generate a StateRuleSet
             rule_list, default_outcome = rules_dict[state]
-            for rule in rule_list:
+            rules = []
+            for rule_name, rule_args in rule_list:
                 # Generate a CountingRule
-                rule_name, = ###
-            state_rules[state] = rules
-        return GameRuleSet(state_rule_sets )
+                rules.append(counting_rule[rule_name](*rule_args))
+            state_rules[state] = StateRuleSet(rules, default_outcome)
+        return GameRuleSet(state_rules)
 
     def propagate(self):
         # Make a copy of the last state
@@ -357,18 +358,65 @@ class StateRuleSet(object):
     def compile(self):
         pass
 
+
+
 class CountingRule(object):
     """
     Rule class for egol
     """
 
-    def __init__(self, count_state_type, neighbour_shell_summing_range):
+    def __init__(self, neighbour_shell_indices):
         """
         """
-        self._count_state_type = count_state_type
-        self._neighbour_shell_summing_range = neighbour_shell_summing_range
+        self._neighbour_shell_indices = neighbour_shell_indices
+
+    def nth_neighbours_state_count(self, states):
+        pass
+
+    def nth_neighbours_state_sum(self, states):
+        pass
 
 
+class MatchingStateCountingRule(CountingRule):
+    """
+    Rule class for counting matching states
+    """
+    def nth_neighbours_state_count(self, states):
+        return Counter(states)
+
+    def nth_neighbours_state_sum(self, states):
+        raise ValueError("Wrong counting rule applied!")
+
+
+class SumStateValuesCountingRule(CountingRule):
+    """
+    Rule class for summing state values
+    """
+    def nth_neighbours_state_count(self, states):
+        raise ValueError("Wrong counting rule applied!")
+
+    def nth_neighbours_state_sum(self, states):
+        return sum(states)
+
+counting_rules = {'matching_state':    MatchingStateCountingRule,
+                  'sum_state_values':  SumStateValuesCountingRule}
+
+
+class NeighbourIndexRule(object):
+    """
+    Derive subclasses for specific topologies
+    """
+    def __init__(self, dimensions):
+        pass
+
+    def get_nth_neighbour_indices_at_i(nth, i):
+        pass
+
+    def get_nr_neighbours_in_nth_shell(nth):
+        pass
+
+class TwoDimPeriodicTorusSquareGrid(NeighbourIndexRule):
+    pass
 
 
 class Gol(Game):
