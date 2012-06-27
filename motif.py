@@ -134,7 +134,97 @@ class Motif(object):
         if not self._bgstate == most_occuring_state:
             self._bgstate = most_occuring_state
 
-    def crop_side(self, side):
+    def set_optimal_dense_sparse_mode(self):
+        # TODO: Confirm 75% break-even dense vs. sparse
+        if self._state_counter[self._bgstate] \
+           > self._nx*self._ny // 4 * 3:
+            # Make it sparse if it isn't already!
+            if self._sparse == False:
+                self._sparse_data = get_sparse_data()
+                self._sparse = True
+                del self._dense_data
+        else:
+            # Make it dense if it isn't already!
+            if self._sparse == True:
+                self._dense_data = get_dense_data()
+                self._sparse = False
+                del self._sparse_data
+
+
+    def get_sparse_data(self):
+        if self._sparse: return self._sparse_data
+        sparse = {}
+        for idx, state in enumerate(self._dense_data):
+            if state != self._bgstate:
+                sparse[idx] = state
+        return sparse
+
+    def get_dense_data(self):
+        if not self._sparse: return self._dense_data
+        dense = []
+        for idx in range(self._nx*self._ny):
+            self._sparse_data.get(idx, self._bgstate)
+
+    def crop(self):
+        """ To be overloaded by specific Motif class"""
+        pass
+
+    def optimize(self, crop=True):
+        if crop: self.crop()
+        self.optimize_bgstate()
+        self.set_optimal_dense_sparse_mode()
+
+    def save(self, path, crop=True, bz2=True):
+        # Optimize
+        self.optimize(crop)
+
+        # use pickle.dump to BZ2File (optinal)
+        exts = ['motif']
+        if bz2: exts.append('bz2')
+        for i in len(exts):
+            if not path.endswith('.'.join(exts[i:])):
+                path = map(len, ) ext'.bz2'
+        if not path.endswith('.motif.bz2'):
+            path = path[:-4] + '.motif.bz2'
+
+        pickle.dump(self, BZ2File(path,'wb'))
+
+    @classmethod
+    def load_instance_from_file(cls, path):
+        # use pickle.load from BZ2File
+        if path.endswith('.motif.bz2'):
+            return pickle.load(BZ2File(path,'rb'))
+        else:
+            raise ValueError('Motif file must end with ".motif.bz2"')
+
+    @classmethod
+    def load_instance_from_legacy_txt(cls, path):
+        # Support for loading legacy format:
+        import json
+        ifh = open(path, 'rt')
+        loaddata = json.load(ifh)
+        nx = len(loaddata[0])
+        ifh.close()
+        dense_data = []
+        for segm in loaddata:
+            dense_data.extend(segm)
+        return cls(dense_data=dense_data,stripwidth=nx)
+
+    def rotate(self):
+        pass
+
+    @property
+    def minimal_rectangle_dense_data(self):
+        NotImplemented
+
+    @property
+    def minimal_rectangle_sparse_data(self):
+        NotImplemented
+
+
+class SquareGridMotif(Motif):
+
+        def crop_side(self, side):
         """ Once you crop, you cannot change
             bgstate any more, or you'll risk
             losing information by recursive,
@@ -187,83 +277,3 @@ class Motif(object):
     def crop(self):
         for side in ('top', 'bottom', 'left', 'right'):
             self.crop_side(side)
-
-    def set_optimal_dense_sparse_mode(self):
-        # TODO: Confirm 75% break-even dense vs. sparse
-        if self._state_counter[self._bgstate] \
-           > self._nx*self._ny // 4 * 3:
-            # Make it sparse if it isn't already!
-            if self._sparse == False:
-                self._sparse_data = get_sparse_data()
-                self._sparse = True
-                del self._dense_data
-        else:
-            # Make it dense if it isn't already!
-            if self._sparse == True:
-                self._dense_data = get_dense_data()
-                self._sparse = False
-                del self._sparse_data
-
-
-    def get_sparse_data(self):
-        if self._sparse: return self._sparse_data
-        sparse = {}
-        for idx, state in enumerate(self._dense_data):
-            if state != self._bgstate:
-                sparse[idx] = state
-        return sparse
-
-    def get_dense_data(self):
-        if not self._sparse: return self._dense_data
-        dense = []
-        for idx in range(self._nx*self._ny):
-            self._sparse_data.get(idx, self._bgstate)
-
-    def optimize(self):
-        self.crop()
-        self.optimize_bgstate()
-        self.set_optimal_dense_sparse_mode()
-
-    def save(self, path):
-        # Optimize
-        self.optimize()
-
-        # use pickle.dump to BZ2File
-        if not path.endswith('.bz2'):
-            path += '.bz2'
-        if not path.endswith('.motif.bz2'):
-            path = path[:-4] + '.motif.bz2'
-
-        pickle.dump(self, BZ2File(path,'wb'))
-
-    @classmethod
-    def load_instance_from_file(cls, path):
-        # use pickle.load from BZ2File
-        if path.endswith('.motif.bz2'):
-            return pickle.load(BZ2File(path,'rb'))
-        else:
-            raise ValueError('Motif file must end with ".motif.bz2"')
-
-    @classmethod
-    def load_instance_from_legacy_txt(cls, path):
-        # Support for loading legacy format:
-        import json
-        ifh = open(path, 'rt')
-        loaddata = json.load(ifh)
-        nx = len(loaddata[0])
-        ifh.close()
-        dense_data = []
-        for segm in loaddata:
-            dense_data.extend(segm)
-        return cls(dense_data=dense_data,stripwidth=nx)
-
-    def rotate(self):
-        pass
-
-    @property
-    def minimal_rectangle_dense_data(self):
-        NotImplemented
-
-    @property
-    def minimal_rectangle_sparse_data(self):
-        NotImplemented
