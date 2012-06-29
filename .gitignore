@@ -5,3 +5,8 @@
 #*#
 profile.stats
 meliae.dump
+cython/build/
+cython/*.so
+cython/lcg_ansi_c
+cython/lcg_ansi_c_np
+cython/*.html
