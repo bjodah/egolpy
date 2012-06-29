@@ -13,6 +13,7 @@ try:
 except ImportError:
     import pickle
 
+#@with_storing_functionality
 class Motif(object):
     """
     A motif class for storing 2D motifs of arbitrary
@@ -23,63 +24,55 @@ class Motif(object):
     background.
     """
 
-    def __init__(self, state_coords=None, bgstate=0, dense_data=None,
-                 stripwidth=None, nx=None, ny=None, from_file=None):
+    def __init__(self, bgstate=0, sparse_data=None,
+                 dense_data=None, dim = None,
+                 sparse_data_initiator = dict,
+                 dense_data_initiator = list,
+                 ):
         """
-
+        TODO nx, ny, is associated with SQUARE, not e.g. TRIANGLE
         Arguments:
-        - `state_coords`: a list of (x, y, state) entries
         - `bgstate`:      an integer representing the background
                           state of the motif (used when generating
                           a minimal_rectangle_data_strip)
+        - `sparse_data`: a list of (index, state) entries
+        - `dense_data`: (optional) a list of states
+        - `dim`: Dimension of Motif (assumed to be length in
+                 baseclass)
+        - `sparse_data_initiator`: dict or specialized dict
+        - `dense_data_initiator`: list or specialized list
         """
-        if from_file != None:
-            self.load(from_file)
-            return None
+
+        self._dense_data_initiator  = dense_data_initiator
+        self._sparse_data_initiator = sparse_data_initiator
+        self.set_dim(dim) # stores self._dim and sets: self._n
+
+        # Now store bgstate
+        self._bgstate = bgstate
+
         if state_coords != None:
             # state_coords provided
             # make sure not also dense_data provided (ambigous)
             assert dense_data == None
-            if nx == None:
-                # No nx, ny provided
-                # assign from largest coords
-                assert ny == None
-                nx, ny = 0, 0
-                for x, y, state in state_coords:
-                    if x > nx: nx = x
-                    if y > ny: ny = y
-                nx += 1; ny += 1
-            assert nx, ny != (None, None)
-            # let's store _nx, _ny
-            self._nx = nx; self._ny = ny
             # set state_coords
-            self._sparse_data = {}
-            for x, y, state in state_coords:
-                self._sparse_data[self.get_index(x,y)] = state
             self._sparse = True
+            self._sparse_data = {}
+            for idx, state in state_coords:
+                self[idx] = state
         else:
             # no state_coords provided
             if dense_data != None:
-                assert stripwidth != None
-                self._dense_data = dense_data
                 self._sparse = False
-                nx = stripwidth
-                ny = len(dense_data)//nx
-                assert len(dense_data) % nx == 0
+                self._dense_data = self._dense_data_initiator(\
+                    dense_data)
             else:
                 # neither state_coords nor dense_data provided
-                # initialize _dense_data with bgstate with
-                # dimensions equal to nx, ny (must be provided)
-                assert nx, ny != (None, None)
-                self._dense_data = [bgstate]*nx*ny
-            # let's store _nx, _ny
-            self._nx = nx; self._ny = ny
+                # initialize _dense_data with bgstate with length
+                # self._n
+                self._dense_data = self._dense_data_initiator(\
+                    [self._bgstate]*self._n)
 
-        # Now _nx, _ny, _sparse and
-        # (_dense_data / _sparse_data) are stored
-
-        # Now store bgstate
-        self._bgstate = bgstate
+        # Now _sparse and (_dense_data or _sparse_data) are stored
 
         # Make a state count Counter and store as:
         # self._state_counter
@@ -89,6 +82,15 @@ class Motif(object):
         # self._sparse = True/False, where False -> dense mode
         self.set_optimal_dense_sparse_mode()
 
+
+    def set_dim(self, dim):
+        self._dim = dim
+        # For arbitrary topology assume dim to represent number
+        # of cells: (triangular tiling of tetrahedron, square
+        # tiling of qube)
+        self._n = dim
+
+
     def recount_states(self):
         if self._sparse:
             self._state_counter = Counter(self._sparse_data.values())
@@ -97,14 +99,17 @@ class Motif(object):
 
     def __getitem__(self, index):
         if self._sparse:
-            if index > self._nx*self._ny:
+            if index > self._n:
                 raise IndexError('Out of bounds')
             return self._sparse_data.get(index, self._bgstate)
         else:
             return self._dense_data[index]
 
     def __delitem__(self, index):
-        self[index] = self._bgstate
+        if self._sparse:
+            self._sparse_data.pop(index)
+        else:
+            self[index] = self._bgstate
 
     def query_xy(self, x, y):
         return self[self.get_index(x, y)]
@@ -127,6 +132,11 @@ class Motif(object):
         self[self.get_index(x, y)] = new_state
 
     def get_index(self, x, y):
+        """ Overload this with appropriate handling of
+        self._dim and respect to _pbc """
+        if x >= self._nx or x < 0 \
+               or y < 0 or y >= self._ny:
+            return None # too bad integers dont support NaN
         return self._nx*y+x
 
     def optimize_bgstate(self):
@@ -153,7 +163,7 @@ class Motif(object):
 
     def get_sparse_data(self):
         if self._sparse: return self._sparse_data
-        sparse = {}
+        sparse = self._sparse_data_initiator()
         for idx, state in enumerate(self._dense_data):
             if state != self._bgstate:
                 sparse[idx] = state
@@ -163,7 +173,8 @@ class Motif(object):
         if not self._sparse: return self._dense_data
         dense = []
         for idx in range(self._nx*self._ny):
-            self._sparse_data.get(idx, self._bgstate)
+            dense.append(self._sparse_data.get(idx, self._bgstate))
+        return self._dense_data_initiator(dense)
 
     def crop(self):
         """ To be overloaded by specific Motif class"""
@@ -174,7 +185,7 @@ class Motif(object):
         self.optimize_bgstate()
         self.set_optimal_dense_sparse_mode()
 
-    def save(self, path, crop=True, bz2=True):
+    def save_instance_to_file(self, path, crop=True, bz2=True):
         # Optimize
         self.optimize(crop)
 
@@ -208,7 +219,7 @@ class Motif(object):
         dense_data = []
         for segm in loaddata:
             dense_data.extend(segm)
-        return cls(dense_data=dense_data,stripwidth=nx)
+        return cls(dense_data=dense_data,nx=nx)
 
     def rotate(self):
         pass
@@ -224,7 +235,44 @@ class Motif(object):
 
 class SquareGridMotif(Motif):
 
-        def crop_side(self, side):
+    def get_nth_square_neighbour_indices(nth, idx):
+        y = i // self._nx
+        x = i % self._nx
+        result = [-1]*((2*nth+1)**2-(2*(nth-1)+1)**2)
+        j = 0
+        for ox in range(x-nth, x+nth+1):
+            for oy in (y-nth, y+nth):
+                result[j] = self.get_index(ox, oy)
+                j += 1
+        for oy in range(y-nth+1, y+nth):
+            for ox in (x-nth, y+nth):
+                result[j] = self.get_index(ox, oy)
+                j += 1
+        if -1 in result:
+            result = [x for x in result if x != -1]
+        return result
+
+    def set_dim(self, dim):
+        super(self.__class__, self).set_dim(dim)
+        self._nx, self._ny = dim
+        self._n = self._nx * self._ny
+        assert self._n % self._nx == 0
+        assert self._n % self._ny == 0
+
+            if nx == None:
+                # No nx, ny provided
+                # assign from largest coords
+                assert ny == None
+                nx, ny = 0, 0
+                for x, y, state in state_coords:
+                    if x > nx: nx = x
+                    if y > ny: ny = y
+                nx += 1; ny += 1
+            assert nx, ny != (None, None)
+            # let's store _nx, _ny
+            self._nx = nx; self._ny = ny
+
+    def crop_side(self, side):
         """ Once you crop, you cannot change
             bgstate any more, or you'll risk
             losing information by recursive,
@@ -271,9 +319,15 @@ class SquareGridMotif(Motif):
                 for x in range(xstart, xstart+width):
                     new_dense_data.append(self[self.get_index(x,y)])
             self.__init__(dense_data=new_dense_data,
-                          stripwidth=width)
+                          nx=width)
 
 
     def crop(self):
         for side in ('top', 'bottom', 'left', 'right'):
             self.crop_side(side)
+
+
+class PeriodicSquareGridMotif(SquareGridMotif):
+
+    def get_index(self, x, y):
+        return (y % self._ny)*self._nx + x % self._nx
