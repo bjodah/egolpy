@@ -353,7 +353,7 @@ class StateRuleSet(object):
         A state has a ordered rule set
         """
         self._rule_list       = rule_list
-        self._default_outcome = default_outcome
+        self.default_outcome = default_outcome
 
     def compile(self):
         pass
