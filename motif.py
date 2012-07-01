@@ -158,16 +158,19 @@ class Motif(object):
 
 
     def propagate(self):
+        # changes has format [(idx, prev_state, new_state), ... ]
         if self._sparse:
             if hasattr(self._sparse_data, 'propagate'):
-                self._sparse_data.propagate()
-                self.recount_states()
+                changes = self._sparse_data.propagate()
+                self._changed_since_propagate.clear()
+                map(self.update_count, *zip(*changes))
             else:
                 self.propagate_sparse()
         else:
             if hasttr(self._dense_data, 'propagate'):
-                self._dense_data.propagate()
-                self.recount_states()
+                changes = self._dense_data.propagate()
+                self._changed_since_propagate.clear()
+                map(self.update_count, *zip(*changes))
             else:
                 self.propagate_dense()
 
@@ -196,7 +199,7 @@ class Motif(object):
                     if idx != self._bgstate:
                         self._changed_since_propagate.add(idx)
 
-    def update_count(self, inc_by_one, dec_by_one, index):
+    def update_count(self, index, dec_by_one, inc_by_one):
         self._state_counter[inc_by_one] += 1
         self._state_counter[dec_by_one] -= 1
         if self._state_counter[dec_by_one] == 0:
@@ -225,7 +228,7 @@ class Motif(object):
                 # Data change!
                 prev_state = self._sparse_data.pop(index)
                 # __setitem__ not called, calibrate number of states manually
-                self.update_count(self._bgstate, prev_state, index)
+                self.update_count(self.index, prev_state, _bgstate)
         else:
             self[index] = self._bgstate
 
@@ -235,7 +238,7 @@ class Motif(object):
         cur_state = self[index]
         if cur_state != new_state:
             # Data change!
-            self.update_count(new_state, cur_state, index)
+            self.update_count(index, cur_state, new_state)
             if self._sparse:
                 if new_state == self._bgstate:
                     self._sparse_data.pop(index)
@@ -497,25 +500,42 @@ class SquareGridMotif(Motif):
         return cls(dense_data=dense_data,nx=nx)
 
 
-class GolMotif (SquareGridMotif):
 
-    @ExtendedInitDecoratorFactory(SquareGridMotif, periodic = False)
+
+class GameMotif (SquareGridMotif):
+
+    @ExtendedInitDecoratorFactory(SquareGridMotif,
+                                  game_rule_dict = None,
+                                  state_color_map = None,
+                                  )
     def __init__(self, *args, **kwargs):
         """
         Optional arguments in overloaded init:
-        - `periodic`: Use periodic boundary conditions? (Default: True)
+        - `game_rule_dict`: Game rule set specifying the rules of the game
+        - `state_color_map`: Dicttionary mapping state to RGB tuples.
         """
+        self.game_rule_dict =  game_rule_dict
+        if self.game_rule_dict == None:
+            raise ValueError("You must provide a game_rule_dict")
+        self.state_color_map = state_color_map
+        if self.state_color_map == None:
+            self.state_color_map = dict([(i, (i, i, i)) for i in range(256)])
         self._periodic = kwargs['periodic']
 
+
+    def get_max_neigh_idxs(self, index):
+        max_neigh_idxs = set()
+        for counting_rule in self.game_rule_dict[self[index]]:
+            max_neigh_idxs.add(counting_rule.get_neigh_idxs(index, self))
 
     def propagate_sparse(self):
         considered_indices = set()
         prop_chngs = []
         for chg_idx in self._changed_since_propagate:
-            for neigh_idx in self.get_max_neigh(index):
+            for neigh_idx in self.get_max_neigh_idxs(index):
                 considered_indices.add(neigh_idx)
         for con_idx in considered_indices:
-            state_rule = self.state_rules[self[con_idx]]:
+            state_rule = self.game_rule_dict[self[con_idx]]:
             for counting_rule in state_rule.counting_rules:
                 outcome = counting_rule.match()
                 if outcome != None:
@@ -526,9 +546,85 @@ class GolMotif (SquareGridMotif):
                 outcome = state_rule.default_outcome
                 if outcome != self[con_idx]:
                     prop_chngs.append((con_idx, outcome))
+        self._changed_since_propagate.clear()
         for idx, state in prop_chngs:
             self[idx] = state
 
+
     def propagate_dense(self):
+        return self.propagate_sparse()
+
+class StateRuleList(list):
+    """
+    Set of rules for a state
+    """
+
+    def __init__(self, counting_rule_list, default_outcome):
+        """
+        A state has a ordered rule set
+        """
+        super(self.__class__, self).__init__(counting_rule_list)
+        self.default_outcome = default_outcome
+
+    def get_neighbourhood_counts(self, neighhood_repr, motif):
+        counter = Counter()
+        for idx in self.neighhood[neighhood_repr]:
+            counter[motif[idx]] += 1
+        return counter
+
+    def set_neighbourhoods(index, motif):
+        for counting_rule in self.counting_rule_list:
+            neighhood_repr = (index_gen,* args)
+            if not neighhood_repr in self.neighhood:
+                new_neighhood = counting_rule.get_neigh_idxs(index, motif)
+                self.neighhood[neighhood_repr] = new_neighhood
+
+
+class NeigbourCounting(object):
+    pass
+
+class CountingRule(object):
+    """
+    Rule class for egol
+    """
+
+    def __init__(self, match, neighbour_shell_indices, outcomes):
+        """
+        """
+        self._neighbour_shell_indices = neighbour_shell_indices
+        self._match = match
+        self._outcomes = outcomes
+
+    def count(self, motif):
+        self._count = Counter([motif[x] for x in self._neighbour_shell_indices])
+
+    def match(self, neighbourhood_count):
+        for matching_nr, outcome_state in self._outcomes:
+            if neighbourhood_count[self._match] == matching_nr:
+                return outcome_state
+
+        return self.outcomes.get(nr, None)
+
+    def get_neigh_idxs(self, index, motif):
         pass
 
+class MatchingStateCountingRule(CountingRule):
+    """
+    Rule class for counting matching states
+    """
+
+    def __init__(self, neighbour_shell_indices, matching):
+
+    def nth_neighbours_state_count(self, nth, motif):
+        self._neighbour_shell_indices
+
+
+    def nth_neighbours_state_sum(self, states):
+        raise ValueError("Wrong counting rule applied!")
+
+
+DEAD, ALIVE = range(2)
+game_of_life_rule_dict = {DEAD: dead_state_rule_list,
+                          ALIVE: alive_state_rule_list,}
+
+Gol = GameMotif
