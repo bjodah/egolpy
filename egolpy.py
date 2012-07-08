@@ -18,7 +18,10 @@ from __future__ import division
 import sys, pygame, os
 from itertools import product
 import logging
-from egolpy_classes import GamePlan
+
+#from egolpy_classes import GamePlan
+from motif import GameRuleDict, GameMotif, get_gol_rule_dict
+
 
 if sys.version[0] == '3':
     imap = map
@@ -45,15 +48,18 @@ def main(nxcells=40, nycells=40, width=400, height=400,
 
     size = width, height
 
-    rules, colormap, button_action_map = None, None, None
 
-    if rule_file != '':
-        if os.path.exists(rule_file):
-            rules, colormap, button_action_map = pickle.load(\
-                open(rule_file, 'rb'))
-        else:
-            logger.debug('Couldn\'t open: %s. Using std GOL rules',
-                         rule_file)
+
+    #rules, colormap, button_action_map = None, None, None
+
+    # if rule_file != '':
+    #     if os.path.exists(rule_file):
+    #         rules, colormap, button_action_map = pickle.load(\
+    #             open(rule_file, 'rb'))
+    #     else:
+    #         logger.debug('Couldn\'t open: %s. Using std GOL rules',
+    #                      rule_file)
+
 
     game_plan = GamePlan((nxcells,nycells), size,
                    pbc=periodic, rules=rules, colormap=colormap,
