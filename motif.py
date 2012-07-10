@@ -3,22 +3,29 @@
 
 from __future__ import division, print_function
 
+
+# Stdlib imp.
 import sys
-from collections import Counter
 from itertools import product
+import logging
+
 
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
 
-from project_helpers import ExtendedInitDecoratorFactory
+from collections import Counter
+
+# Intraproj.  imp.
+from project_helpers import ExtendedInitDecoratorFactory,\
+     memoize
+
+# External dep.
+import pygame
 
 INT_NAN = None
 
-
-#Logging
-import logging
 logging.basicConfig()
 logger = logging.getLogger('motif')
 logger.setLevel(logging.INFO)
@@ -40,6 +47,8 @@ class Motif(object):
                  sparse_data_type = dict,
                  dense_data_type = list,
                  mode_change_allowed = True,
+                 specialized_propagate = False,
+                 save_history = False,
                  ):
         """
         TODO nx, ny, is associated with SQUARE, not e.g. TRIANGLE
@@ -60,6 +69,7 @@ class Motif(object):
         self._dense_data_type  = dense_data_type
         self._sparse_data_type = sparse_data_type
         self._mode_change_allowed = mode_change_allowed
+        self._specialized_propagate = specialized_propagate
 
         if sparse_data != None:
             # sparse_data provided
@@ -70,39 +80,6 @@ class Motif(object):
             self._sparse = False
 
         self.set_dim(dim) # stores self._dim and sets: self._n
-
-        # Determine whether provided types provide own
-        # propagate methods:
-        if mode_change_allowed == True:
-            # We might switch between sparse and dense
-            if hasattr(self._dense_data_type, 'propagate') and \
-               hasattr(self._sparse_data_type, 'propagate'):
-                logger.debug("Both sparse and dense data " + \
-                             "types support propagate " + \
-                             "specialized methods will be used.")
-                self._specialized_propagate = True
-            else:
-                logger.debug("At least one of the sparse and " + \
-                             "densedata types lack support " + \
-                             "for specialized propagate, no " + \
-                             "specialized methods will be used.")
-                self._specialized_propagate = False
-        else:
-            # We will never switch between sparse and dense
-            if self._sparse:
-                logger.debug("We are sparse and always will be" + \
-                             ".  Specialized methods will be used.")
-                if hasattr(self._sparse_data_type, 'propagate'):
-                    self._specialized_propagate = True
-                else:
-                    self._specialized_propagate = False
-            else:
-                logger.debug("We are dense and always will be" + \
-                             ".  Specialized methods will be used.")
-                if hasattr(self._dense_data_type, 'propagate'):
-                    self._specialized_propagate = True
-                else:
-                    self._specialized_propagate = False
 
         # Now store bgstate
         self._bgstate = bgstate
@@ -145,6 +122,12 @@ class Motif(object):
         # self._sparse = True/False, where False -> dense mode
         self.set_optimal_dense_sparse_mode()
 
+        # Keep track of what generation we are watching
+        self.generation = 0
+
+        self._save_history = save_history
+        if self._save_history:
+            self._history = []
 
     def set_dim(self, dim):
         """
@@ -166,19 +149,20 @@ class Motif(object):
     def propagate(self):
         # changes has format [(idx, prev_state, new_state), ... ]
         if self._sparse:
-            if hasattr(self._sparse_data, 'propagate'):
+            if self._specialized_propagate:
                 changes = self._sparse_data.propagate()
                 self._changed_since_propagate.clear()
                 map(self.update_count, *zip(*changes))
             else:
                 self.propagate_sparse()
         else:
-            if hasattr(self._dense_data, 'propagate'):
+            if self._specialized_propagate:
                 changes = self._dense_data.propagate()
                 self._changed_since_propagate.clear()
                 map(self.update_count, *zip(*changes))
             else:
                 self.propagate_dense()
+        self.generation += 1
 
     def propagate_sparse(self):
         """ To be overloaded """
@@ -187,6 +171,26 @@ class Motif(object):
     def propagate_dense(self):
         """ To be overloaded """
         NotImplemented
+
+    def count_state_at_indices(self, counted_state, idxs):
+        """ Operates not via __getitem__ in order
+            to be efficiently overloaded
+            This function is called by CountingRule.match() """
+        #return sum([self[i] == counted_state for i in idxs])
+        if self._sparse:
+            count = 0
+            if counted_state != self._bgstate:
+                for idx in idxs:
+                    if idx in self._sparse_data:
+                        if self._sparse_data[idx] == counted_state:
+                            count += 1
+            else:
+                for idx in idxs:
+                    if idx not in self._sparse_data:
+                        count += 1
+        else:
+            count = sum([self[i] == counted_state for i in idxs])
+        return count
 
     def recount_states(self):
         if self._sparse:
@@ -317,6 +321,19 @@ class Motif(object):
     def __str__(self):
         return str([self[x] for x in range(self._n)])
 
+    def get_raster_line_coords(self, w, h,
+                               screen_width,
+                               screen_height):
+        start, stop = [], []
+        for x in range(w, screen_width, w):
+            start.append((x, 0))
+            stop.append((x, screen_height))
+        for y in range(h, screen_width + 1, h):
+            start.append((0, y))
+            stop.append((screen_width, y))
+        return zip(start, stop)
+
+
     # Useful ND method for use by subclasses
     def rotate(self):
         NotImplemented
@@ -347,35 +364,6 @@ class Motif(object):
         NotImplemented
 
 
-def test_Motif():
-    m = Motif(0, dense_data = range(5))
-    del m[3]
-    print(m)
-    del m[1]
-    del m[4]
-    print(m)
-    print('sparse', m._sparse)
-    print('state count: ', m._state_counter)
-    print('optimizing...  ')
-    m.optimize()
-    print('sparse', m._sparse)
-    print('recounting states... ')
-    m.recount_states()
-    print('state count: ', m._state_counter)
-    print('optimizing...  ')
-    m.optimize()
-    print('sparse', m._sparse)
-    print('state count: ', m._state_counter)
-    del m[0]
-    m[2] = 2
-    m[4] = 99
-    m.optimize()
-    m[3] = 99
-    del m[2]
-    print(m)
-    print(m._state_counter)
-
-
 
 class SquareGridMotif(Motif):
 
@@ -388,6 +376,7 @@ class SquareGridMotif(Motif):
         self._periodic = kwargs['periodic']
 
 
+    @memoize
     def get_index_from_xy(self, x, y):
         """
         Get data index from x and y possibly using periodic
@@ -402,6 +391,7 @@ class SquareGridMotif(Motif):
                 return INT_NAN # too bad integers dont support NaN
             return self._nx*y+x
 
+    @memoize
     def get_nth_square_neighbour_indices(self, nth, idx):
         y = idx // self._nx
         x = idx % self._nx
@@ -512,52 +502,39 @@ class SquareGridMotif(Motif):
         return '\n'.join(rows)
 
 
-def test_SquareGridMotif(nx = 5, ny = 6):
-    sgm = SquareGridMotif(periodic = True,
-                          dim = (nx, ny))
-    print(sgm)
-    print('-'*(2 * nx - 1))
-    sgm.redefine_xy(1, 1, 1)
-    sgm.redefine_xy(2, 2, 1)
-    sgm.redefine_xy(3, 3, 1)
-    sgm.redefine_xy(3, 4, 1)
-    sgm.redefine_xy(2, 4, 1)
-    sgm.redefine_xy(1, 4, 1)
-    print(sgm)
-    print('-'*(2 * nx - 1))
-    sgm.crop()
-    print(sgm)
-    print('-'*(2 * nx - 1))
-    sgm.crop()
-    print(sgm)
-    print('-'*(2 * nx - 1))
-
-
-
 class GameMotif(SquareGridMotif):
 
     @ExtendedInitDecoratorFactory(SquareGridMotif,
                                   game_rule_dict = None,
-                                  state_color_map = None,
+                                  state_colormap = None,
+                                  button_action_map = None,
                                   )
     def __init__(self, *args, **kwargs):
         """
         Optional arguments in overloaded init:
         - `game_rule_dict`: Game rule dict mapping state to a list of
            counting rule instances.
-        - `state_color_map`: Dicttionary mapping state to RGB tuples.
+        - `state_colormap`: Dicttionary mapping state to RGB tuples.
         """
         self.game_rule_dict = kwargs['game_rule_dict']
         if self.game_rule_dict == None:
             raise ValueError("You must provide a game_rule_dict")
-        self.state_color_map = kwargs['state_color_map']
-        if self.state_color_map == None:
-            self.state_color_map = dict([(i, (i, i, i)) for i in range(256)])
+        self.state_colormap = kwargs['state_colormap']
+        self.button_action_map = kwargs['button_action_map']
+        if self.state_colormap == None:
+            self.state_colormap = dict([(i, (i, i, i)) for i in range(256)])
         self.propagate_dense = self.propagate_generic
         self.propagate_sparse =  self.propagate_generic
         self.game_rule_dict.bind_to_motif(self)
         self._old = {} # Remember last changes one step back
 
+    def click(self, buttons, ix, iy):
+        if buttons in self.button_action_map:
+            self[self.get_index_from_xy(ix, iy)] = \
+               self.button_action_map[buttons]
+
+    def get_color(self, index):
+        return self.state_colormap[self[index]]
 
     def get_possibly_affected_neigh_idxs(self, index):
         pan_idxs = set() # Possibly affected neighbour indices
@@ -605,224 +582,7 @@ class GameMotif(SquareGridMotif):
             self._old[idx] = self[idx]
             self[idx] = state
 
-class GameRuleDict(dict):
-    def bind_to_motif(self, motif):
-        self._motif = motif
-        for state, state_rule_list in self.items():
-            state_rule_list.bind_to_motif(motif)
-
-def test_GameRuleDict():
-    grd = GameRuleDict({'a': 1, 'b': 2})
-    assert hasattr(grd, 'bind_to_motif')
-    assert grd['a'] == 1
-    assert grd['b'] == 2
-    assert grd.get('c', None) == None
+        if self._save_history:
+            self._history.append(self._old.items())
 
 
-class StateRuleList(list):
-    """
-    Set of rules for a state
-    """
-
-    def __init__(self, counting_rule_list, default_outcome):
-        """
-        A state has a ordered rule set
-        """
-        super(self.__class__, self).__init__(counting_rule_list)
-        self.default_outcome = default_outcome
-        self.reverse_map = None
-
-    def bind_to_motif(self, motif):
-        self._motif = motif
-        for counting_rule in self:
-            counting_rule.bind_to_motif(motif)
-
-
-def test_StateRuleList():
-    srl = StateRuleList([1, 2, 3], 7)
-    assert srl.default_outcome == 7
-    assert srl[:] == [1, 2, 3]
-
-
-class NeigbourCounting(object):
-    pass
-
-
-class CountingRule(object):
-    """
-    Rule class for egol
-    """
-
-    def __init__(self, counted_state, neighbour_indexing_rule,
-                 count_outcomes):
-        """
-        """
-        self.counted_state = counted_state
-        self._neighbour_indexing_rule = neighbour_indexing_rule
-        self._count_outcomes = count_outcomes
-
-    def bind_to_motif(self, motif):
-        self._motif = motif
-        self._neighbour_indexing_rule.bind_to_motif(motif)
-
-    def count(self, index):
-        states = [self._motif[x] for x in self._neighbour_indexing_rule.get_neigh_idxs(index)]
-        return Counter(states)[self.counted_state]
-
-    def match(self, index):
-        nr = self.count(index)
-        return self._count_outcomes.get(nr, None)
-
-    def get_neigh_idxs(self, index):
-        return self._neighbour_indexing_rule.get_neigh_idxs(index)
-
-    def __str__(self):
-        fmtstr = "CountingRule({},{},{})"
-        return fmtstr.format(self.counted_state, self._neighbour_indexing_rule, self._count_outcomes)
-
-class NeighbourIndexingRule(object):
-    def __init__(self, *args):
-        pass
-
-    def __str__(self):
-        pass
-
-class SquareNeighbourhoodShellIndexingRule(NeighbourIndexingRule):
-    """
-    TODO:
-    Implement caching?
-    """
-
-    def __init__(self, shell_idxs):
-        self._shell_idxs = shell_idxs
-        self._motif = None
-
-    def bind_to_motif(self, motif):
-        assert isinstance(motif, SquareGridMotif)
-        self._motif = motif
-
-    def get_neigh_idxs(self, index):
-        result = []
-        for shell_idx in self._shell_idxs:
-            result.extend(self._motif.get_nth_square_neighbour_indices(shell_idx, index))
-        return result
-
-    def __str__(self):
-        return "<SqNeighShIdxRl({})>".format(self._shell_idxs)
-
-def test_SquareNeighbourhoodShellIndexingRule():
-    snsir = SquareNeighbourhoodShellIndexingRule([1])
-    motif = SquareGridMotif(sparse_data= {5: 1, 6: 1, 9: 1, 10: 1}.items(),
-                            dim = (4, 4))
-    snsir.bind_to_motif(motif)
-    neigh7 = snsir.get_neigh_idxs(7)
-    count = 0
-    for ni in neigh7:
-        print(motif[ni])
-        count += 1 if motif[ni] == 1 else 0
-    print(count)
-    print(motif)
-    print(neigh7)
-    for ni in neigh7:
-        motif[ni] = 2
-    print(motif)
-
-
-def get_gol_rule_dict():
-    DEAD, ALIVE = range(2)
-    gol_rule_dict =  GameRuleDict({
-        DEAD: StateRuleList(
-            [
-                CountingRule(ALIVE,
-                             SquareNeighbourhoodShellIndexingRule([1]),
-                             {3: ALIVE})
-                ],
-            DEAD),
-        ALIVE: StateRuleList(
-            [
-                CountingRule(ALIVE,
-                             SquareNeighbourhoodShellIndexingRule([1]),
-                             {2: ALIVE, 3: ALIVE}),
-                ],
-            DEAD)
-        })
-    return gol_rule_dict
-
-def get_gol_colormap():
-    DEAD, ALIVE = range(2)
-    BLACK, WHITE = (0, 0, 0), (255, 255, 255)
-    return {DEAD: BLACK, ALIVE: WHITE}
-
-def test_full_scale(nx = 4, ny = 4, sparse_data = {5: 1, 6: 1, 9: 1, 10: 1}):
-    gol_rule_dict = get_gol_rule_dict()
-    gol_motif = GameMotif(sparse_data     = sparse_data.items(),
-                          game_rule_dict  = gol_rule_dict,
-                          state_color_map = {DEAD:  BLACK,
-                                             ALIVE: WHITE},
-                          periodic        = True,
-                          dim             = (nx, ny),
-                          )
-    print(gol_motif)
-    print('-' * (2 * gol_motif._nx - 1))
-    for k in sparse_data.keys():
-        assert k in gol_motif._changed_since_propagate
-    pani = gol_motif.get_possibly_affected_neigh_idxs(5)
-    print(pani)
-    for i in [0, 1, 2, 4, 6, 8, 9, 10]:
-        assert i in pani
-    gol_motif.propagate()
-    # print(gol_motif)
-    # print('-' * (2 * gol_motif._nx - 1))
-    gol_motif.propagate()
-    # print(gol_motif)
-    # print('-' * (2 * gol_motif._nx - 1))
-    for idx, state in enumerate([0, 0, 0, 0,
-                                 0, 1, 1, 0,
-                                 0, 1, 1, 0,
-                                 0, 0, 0, 0,]):
-        assert gol_motif[idx] == state
-
-
-def test_glider(nx = 6, ny = 6):
-    dense_data = map(int, """0 0 0 0 0 0
-                             0 0 1 0 0 0
-                             0 0 0 1 0 0
-                             0 1 1 1 0 0
-                             0 0 0 0 0 0
-                             0 0 0 0 0 0""".split())
-    BLACK, WHITE = (0, 0, 0), (255, 255, 255)
-    DEAD, ALIVE = range(2)
-    gol_rule_dict =  GameRuleDict({
-        DEAD: StateRuleList(
-            [
-                CountingRule(ALIVE,
-                             SquareNeighbourhoodShellIndexingRule([1]),
-                             {3: ALIVE})
-                ],
-            DEAD),
-        ALIVE: StateRuleList(
-            [
-                CountingRule(ALIVE,
-                             SquareNeighbourhoodShellIndexingRule([1]),
-                             {2: ALIVE, 3: ALIVE}),
-                ],
-            DEAD)
-        })
-
-    gol_motif = GameMotif(dense_data      = dense_data,
-                          game_rule_dict  = gol_rule_dict,
-                          state_color_map = {DEAD:  BLACK,
-                                             ALIVE: WHITE},
-                          periodic        = True,
-                          dim             = (nx, ny),
-                          )
-    # print(gol_motif)
-    # print('-' * (2 * gol_motif._nx - 1))
-
-    for i in range(24):
-        gol_motif.propagate()
-        # print(gol_motif)
-        # print('-' * (2 * gol_motif._nx - 1))
-
-    for idx, state in enumerate(dense_data):
-        assert gol_motif[idx] == state

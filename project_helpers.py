@@ -1,3 +1,18 @@
+from functools import wraps
+
+def memoize(f):
+    """
+    Decorator to enable caching for computationally heavy functions
+    """
+    cache={}
+    @wraps(f)
+    def wrapper(*args):
+        if args not in cache:
+            cache[args]=f(*args)
+        return cache[args]
+    return wrapper
+
+
 class ExtendedInitDecoratorFactory(object):
     """
     Bound __init__ method decorator for adding kwargs to derived
@@ -27,3 +42,33 @@ class ExtendedInitDecoratorFactory(object):
             wrapper.__doc__ = cur_doc + '\n Docstring of overloaded init: \n'+\
                           super_doc
         return wrapper
+
+# SimpleCounter for use with shedskin (incompatible with numpy ndarray as of now)
+# from collections import defaultdict
+# class SimpleCounter(dict):
+#     # def __new__(cls, *args):
+#     #     return defaultdict.__new__(cls, int)
+
+#     def __init__(self, iterable = ()):
+#         d = dict([(x, iterable.count(x)) for x in set(iterable)])
+#         self.__dict__ = d
+
+#     def __missing__(self, key):
+#         return 0
+# Counter = SimpleCounter
+
+# Shedskin workaround for Logging
+# class Logger(object):
+#     def info(self, msg):
+#         print(msg)
+#     def debug(self, msg):
+#         print(msg)
+
+# class logging(object):
+#     def basicConfig(self):
+#         pass
+#     def getLogger(self, name):
+#         return Logger(name)
+#     def setLevel(self):
+#         pass
+#

@@ -20,8 +20,12 @@ from itertools import product
 import logging
 
 #from egolpy_classes import GamePlan
-from motif import GameRuleDict, GameMotif, get_gol_rule_dict
+from motif import GameMotif
+from rules import GameRuleDict
+from motif_screen import PygameMotifScreen
+from numpymotif import NumpyGameMotif
 
+import contrib.GameSpecification as GameSpecification
 
 if sys.version[0] == '3':
     imap = map
@@ -37,62 +41,67 @@ logging.basicConfig()
 logger = logging.getLogger('egol')
 logger.setLevel(logging.DEBUG)
 
-def main(nxcells=40, nycells=40, width=400, height=400,
-         periodic=True, update_interval=250,
-         load_file='', save_file='', rule_file='',
-         largest_neighbour_distance=1):
+Motif_routine = {'numpy': NumpyGameMotif,
+                 'python': GameMotif}
+
+DEAD, ALIVE = range(2)
+BLACK, WHITE = (0, 0, 0), (255, 255, 255)
+
+def pyglet_loop(game_motif, nxcells, nycells,
+                width, height, periodic,
+                update_interval, load_file,
+                save_file, rule_file):
+    pass
+
+
+
+def pygame_loop(game_motif, nxcells, nycells,
+                width, height, periodic,
+                update_interval, load_file,
+                save_file, rule_file):
     """
-    Main game
+    Pygame event loop
     """
+
     pygame.init()
 
-    size = width, height
+    screen_res = width, height
+    motif_screen = PygameMotifScreen(screen_res, game_motif,
+                               (nxcells, nycells))
 
-
-
-    #rules, colormap, button_action_map = None, None, None
-
-    # if rule_file != '':
-    #     if os.path.exists(rule_file):
-    #         rules, colormap, button_action_map = pickle.load(\
-    #             open(rule_file, 'rb'))
-    #     else:
-    #         logger.debug('Couldn\'t open: %s. Using std GOL rules',
-    #                      rule_file)
-
-
-    game_plan = GamePlan((nxcells,nycells), size,
-                   pbc=periodic, rules=rules, colormap=colormap,
-                   button_action_map=button_action_map,
-                   largest_neighbour_distance=largest_neighbour_distance)
-
-    if load_file != '':
-        if os.path.exists(load_file): game_plan.load(load_file)
     clock = pygame.time.Clock()
     tick = clock.tick()
     paused = False
-    while 1:
+    nr_skip_draw = 0
+    t_wait = int(update_interval / 6) + 1
+    p_wait = 100
+    running = True
+    while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                sys.exit(0)
+                running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 buttons=[0,0,0]
                 buttons[event.button-1] = 1
-                game_plan.click(tuple(buttons), *event.pos)
+                motif_screen.click(tuple(buttons), *event.pos)
             elif event.type == pygame.MOUSEMOTION:
                 if event.buttons[0] == 1:
-                    game_plan.click(event.buttons, *event.pos)
+                    motif_screen.click(event.buttons, *event.pos)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_p or \
                        event.key == pygame.K_SPACE:
                     # Puase / unpause game
                     paused = not paused
+                    logger.info('Pused' if paused else 'Unpaused')
                 elif event.key == pygame.K_s:
                     # Save state of game
-                    game_plan.save(save_file)
+                    motif_screen.save(save_file)
                 elif event.key == pygame.K_l:
                     # Save state of game
-                    game_plan.load(load_file)
+                    motif_screen.load(load_file)
+                elif event.key == pygame.K_j:
+                    # Jump X steps forward
+                    nr_skip_draw = int(raw_input('Skip nr steps: '))
                 # elif event.key == pygame.K_d:
                 #     # Dump memory for debug/optimization
                 # scanner.dump_all_objects('meliae.dump')
@@ -100,17 +109,55 @@ def main(nxcells=40, nycells=40, width=400, height=400,
                      event.key == pygame.K_ESCAPE:
                     sys.exit(0)
 
-        game_plan.draw()
+
         if paused:
-            game_plan.execute_clicks()
+            motif_screen.execute_clicks()
+            motif_screen.draw()
+            pygame.time.wait(p_wait)
         else:
-            tick += clock.tick()
-            if tick > update_interval:
-                game_plan.propagate()
-                tick = 0
+            if nr_skip_draw == 0:
+                motif_screen.draw()
+                pygame.time.delay(t_wait)
+                tick += clock.tick()
+                if tick > update_interval:
+                    motif_screen.propagate()
+                    tick = 0
+            else:
+                motif_screen.propagate()
+                nr_skip_draw -= 1
+                if nr_skip_draw == 0:
+                    motif_screen.full_redraw()
 
-        pygame.time.wait(25)
+    pygame.quit()
+    return 0
 
+def main(nxcells, nycells, width, height,
+         periodic, update_interval,
+         load_file, save_file, rule_file,
+         motif_routine,
+         spec_name,
+         backend='pygame'):
+    """
+    Main routine, initializes gamemotif and launches
+    eventloops
+    """
+    game_spec = GameSpecification.subclasses[spec_name]()
+    game_motif = Motif_routine[motif_routine](#sparse_data = {},
+        game_rule_dict = game_spec.rule_dict,
+        dim = (nxcells, nycells),
+        periodic = periodic,
+        state_colormap = game_spec.colormap,
+        button_action_map = game_spec.button_action_map
+    )
+
+    if backend == 'pygame':
+        return pygame_loop(game_motif, nxcells, nycells, width, height,
+                    periodic, update_interval, load_file,
+                    save_file, rule_file)
+    elif backend == 'pyglet':
+        return pylget_loop(nxcells, nycells, width, height,
+                    periodic, update_interval, load_file,
+                    save_file, rule_file)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
@@ -130,13 +177,16 @@ if __name__ == '__main__':
                         help="State file to load")
     parser.add_argument('-r', '--rule_file', type=str, default='',
                         help="Rule file to load")
-    parser.add_argument('-u', '--update_interval', type=int, default=250,
+    parser.add_argument('-u', '--update_interval', type=int, default=150,
                         help="Update interval in milliseconds")
-    parser.add_argument('-n', '--largest_neighbour_distance',
-                        type=int, default=1,
-                        help="Largest neighbour distance used in rules.")
+    parser.add_argument('-m', '--motif_routine', type=str,
+                        default='python',
+                        help="Motif routine to use [{}] (default: python)".format(', '.join(Motif_routine.keys())))
+    parser.add_argument('-n', '--spec_name', type=str,
+                        default='cgol_GameOfLife',
+                        help="GameSpecification class [{}] (default: cgol_GameOfLife)".format(', '.join(GameSpecification.subclasses.keys())))
 
     args = parser.parse_args()
     argd = vars(args) # Argument dictionary
-    main(**argd)
+    sys.exit(main(**argd))
 

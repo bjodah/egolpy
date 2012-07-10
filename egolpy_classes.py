@@ -552,6 +552,7 @@ class GamePlan(object):
         for y in range(self._h,self._screen_res[1]+1,self._h):
             pygame.draw.line(self._screen, GREY, (0,y), (self._screen_res[0],y))
         pygame.display.flip()
+
     def draw(self):
         redefined_i = self._game._state.get_redefined_i_since_last_call()
         if redefined_i == []: return None
