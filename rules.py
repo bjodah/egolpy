@@ -3,6 +3,9 @@
 
 from __future__ import print_function
 
+from project_helpers import memoize
+
+from motif import SquareGridMotif
 
 class GameRuleDict(dict):
     def bind_to_motif(self, motif):

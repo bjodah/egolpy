@@ -28,3 +28,9 @@ class NumpyGameMotif(GameMotif):
             return 0
         else:
             return bc[counted_state]
+
+    def make_sparse(self):
+        self.log('NumpyGameMotif does only support dense mode of operation')
+
+    def make_dense(self):
+        self.log('NumpyGameMotif does only support dense mode of operation')

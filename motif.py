@@ -5,8 +5,8 @@ from __future__ import division, print_function
 
 
 # Stdlib imp.
-import sys
 from itertools import product
+import sys
 import logging
 
 
@@ -21,14 +21,9 @@ from collections import Counter
 from project_helpers import ExtendedInitDecoratorFactory,\
      memoize
 
-# External dep.
-import pygame
-
 INT_NAN = None
 
 logging.basicConfig()
-logger = logging.getLogger('motif')
-logger.setLevel(logging.INFO)
 
 
 #@with_storing_functionality
@@ -128,6 +123,10 @@ class Motif(object):
         self._save_history = save_history
         if self._save_history:
             self._history = []
+
+        self.logger = logging.getLogger('motif')
+        self.logger.setLevel(logging.INFO)
+
 
     def set_dim(self, dim):
         """
@@ -269,7 +268,7 @@ class Motif(object):
     def optimize_bgstate(self):
         most_occuring_state, num = self._state_counter.most_common(1)[0]
         if not self._bgstate == most_occuring_state:
-            logger.debug('Setting new bgstate: %i', self._bgstate)
+            self.log('Setting new bgstate: %i', self._bgstate)
             self._bgstate = most_occuring_state
 
     def set_optimal_dense_sparse_mode(self):
@@ -277,20 +276,32 @@ class Motif(object):
         # TODO: Confirm 75% break-even dense vs. sparse
         if self._state_counter[self._bgstate] \
                > (self._n // 4 * 3):
-            # Make it sparse if it isn't already!
-            if self._sparse == False:
-                logger.debug('Switching to sparse mode')
-                self._sparse_data = self.get_sparse_data()
-                self._sparse = True
-                del self._dense_data
+            self.make_sparse()
         else:
-            # Make it dense if it isn't already!
-            if self._sparse == True:
-                logger.debug('Switching to dense mode')
-                self._dense_data = self.get_dense_data()
-                self._sparse = False
-                del self._sparse_data
+            self.make_dense()
 
+
+    def make_sparse(self):
+        # Make it sparse if it isn't already!
+        assert self._mode_change_allowed
+        if self._sparse == False:
+            self.log('Switching to sparse mode')
+            self._sparse_data = self.get_sparse_data()
+            self._sparse = True
+            del self._dense_data
+        else:
+            self.log('Did not switching to sparse mode, already in sparse mode!')
+
+    def make_dense(self):
+        # Make it dense if it isn't already!
+        assert self._mode_change_allowed
+        if self._sparse == True:
+            self.log('Switching to dense mode')
+            self._dense_data = self.get_dense_data()
+            self._sparse = False
+            del self._sparse_data
+        else:
+            self.log('Did not switching to dense mode, already in dense mode!')
 
     def get_sparse_data(self):
         if self._sparse: return self._sparse_data
@@ -333,6 +344,13 @@ class Motif(object):
             stop.append((screen_width, y))
         return zip(start, stop)
 
+    def log(self, msg, lvl ='info'):
+        if lvl == 'info':
+            self.logger.info(msg)
+        elif lvl == 'debug':
+            self.logger.debug(msg)
+        else:
+            raise ValueError()
 
     # Useful ND method for use by subclasses
     def rotate(self):
@@ -435,7 +453,7 @@ class SquareGridMotif(Motif):
             for x, y in get_range(i):
                 if self[self.get_index_from_xy(x, y)] != self._bgstate:
                     reached_depth = i
-                    logger.debug("We reached depth %i in %s-side", i, side)
+                    self.log("We reached depth %i in %s-side" % (i, side), 'debug')
                     break
             if reached_depth != -1:
                 break
@@ -454,8 +472,8 @@ class SquareGridMotif(Motif):
             self.resize(x,y,width,height)
 
     def resize(self, xstart, ystart, width, height):
-        logger.debug("Resizing to: %i, %i, %i, %i",
-                     xstart, ystart, width, height)
+        self.log("Resizing to: %i, %i, %i, %i" % \
+                     (xstart, ystart, width, height), 'debug')
         if self._sparse:
             new_sparse_data = {}
             for y in range(ystart, ystart + height):
@@ -552,18 +570,19 @@ class GameMotif(SquareGridMotif):
         return pan_idxs
 
     def propagate_generic(self):
-        logger.debug('Entering propagate_generic')
+        self.log('Entering propagate_generic', 'debug')
         con_idxs = set() # Considered indices
         prop_chngs = []  # List of (idx, new_state) items
         for chg_idx in self._changed_since_propagate:
             con_idxs.add(chg_idx)
             map(con_idxs.add, self.get_possibly_affected_neigh_idxs(chg_idx))
-        logger.debug('Considering indices in propagate: %s', con_idxs)
+        self.log('Considering indices in propagate: %s' % con_idxs, 'debug')
         for con_idx in con_idxs:
+            outcome = None
             for counting_rule in self.game_rule_dict[self[con_idx]]:
                 outcome = counting_rule.match(con_idx)
-                logger.debug('At index %i, considering counting_rule: %s, gave outcome: %s',
-                             con_idx, counting_rule, outcome)
+                self.log('At index %i, considering counting_rule: %s, gave outcome: %s' % \
+                             (con_idx, counting_rule, outcome), 'debug')
                 if outcome != None:
                     if outcome != self[con_idx]:
                         prop_chngs.append((con_idx, outcome))
@@ -571,7 +590,7 @@ class GameMotif(SquareGridMotif):
                     else:
                         # Rule matched but its ideompotent
                         break
-            if outcome ==  None:
+            if outcome == None:
                 # No counting rules matched
                 outcome = self.game_rule_dict[self[con_idx]].default_outcome
                 if outcome != self[con_idx]:

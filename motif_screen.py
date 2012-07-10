@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Stdlib imp.
+from itertools import product
+
+# External dep.
+import pygame
+
+
 # TODO:
 # Implement ncurses screen
 # Implement pyglet screen

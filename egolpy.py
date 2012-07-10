@@ -132,7 +132,7 @@ def pygame_loop(game_motif, nxcells, nycells,
     return 0
 
 def main(nxcells, nycells, width, height,
-         periodic, update_interval,
+         periodic, sparse, update_interval,
          load_file, save_file, rule_file,
          motif_routine,
          spec_name,
@@ -149,6 +149,12 @@ def main(nxcells, nycells, width, height,
         state_colormap = game_spec.colormap,
         button_action_map = game_spec.button_action_map
     )
+
+    if sparse:
+        game_motif.make_sparse()
+    else:
+        game_motif.make_dense()
+
 
     if backend == 'pygame':
         return pygame_loop(game_motif, nxcells, nycells, width, height,
@@ -171,6 +177,8 @@ if __name__ == '__main__':
                         help="Height of gameplan in pixels")
     parser.add_argument('-p', '--periodic', action="store_true",
                         default=False, help="Use periodic boundary conditions")
+    parser.add_argument('-a', '--sparse', action="store_true",
+                        default=False, help="Use sparse data representation (incomp numpy, dense is default)")
     parser.add_argument('-s', '--save_file', type=str, default='',
                         help="State file to save")
     parser.add_argument('-l', '--load_file', type=str, default='',

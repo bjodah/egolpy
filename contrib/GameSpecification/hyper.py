@@ -24,7 +24,7 @@ class GameOfHype(BaseClass.GameSpecification):
                 CountingRule(self.MONSTER,
                              SquareNeighbourhoodShellIndexingRule([1, 2]),
                              dict([(x, self.HYPER) for x \
-                                   in range(5, 25)])),
+                                   in range(10, 25)])),
                 CountingRule(self.DYPER,
                              SquareNeighbourhoodShellIndexingRule([1]),
                              dict([(x, self.DEAD) for x \
@@ -33,6 +33,10 @@ class GameOfHype(BaseClass.GameSpecification):
                              SquareNeighbourhoodShellIndexingRule([1]),
                              dict([(x, self.HYPER) for x \
                                    in range(2, 9)])),
+                CountingRule(self.HYPER,
+                             SquareNeighbourhoodShellIndexingRule([1, 2]),
+                             dict([(x, self.HYPER) for x \
+                                   in range(6, 25)])),
                 ],
             self.DEAD)
         alive_rules = StateRuleList(
@@ -103,10 +107,10 @@ class GameOfHype(BaseClass.GameSpecification):
             self.ALIVE)
         hyper_rules = StateRuleList(
             [
-                CountingRule(self.HYPER,
-                             SquareNeighbourhoodShellIndexingRule([1]),
-                             dict([(x, self.ALIVE) for x \
-                                   in range(5, 9)])),
+                # CountingRule(self.HYPER,
+                #              SquareNeighbourhoodShellIndexingRule([1]),
+                #              dict([(x, self.ALIVE) for x \
+                #                    in range(2, 9)])),
                 ],
             self.DYPER)
         dyper_rules = StateRuleList(
