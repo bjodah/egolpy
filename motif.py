@@ -556,7 +556,7 @@ class GameMotif(SquareGridMotif):
 
     def get_possibly_affected_neigh_idxs(self, index):
         pan_idxs = set() # Possibly affected neighbour indices
-        for state, state_rule_list in self.game_rule_dict.items():
+        for state, state_rule_list in self.game_rule_dict.iteritems():
             for counting_rule in state_rule_list:
                 if index in self._old:
                     # For states that changed last propagate
