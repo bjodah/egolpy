@@ -1,9 +1,14 @@
-# Future imporvements
+# Future improvements
 
+* Auto-detect stable conformations for rule and store them (pickle_cache with code version control?)
+* Write algorithm for spawning stable motifs pseudo randomly (seed) placed on a board
+* PyCUDA
 * Implement random propagation rules
-* Othe neighbour counting rules
+* Implement genetic routine (complex numbers or the like?) - let the best genes win! (state data better map to binary instructions)
+* Other neighbour counting rules
 * Triangular and Hexagonal motifs
-* Full numpy.ndmatrix utilization
+* Cython + array.array (Full numpy.ndmatrix utilization - Rethink: cython not mature enough, poor support for ndenumerate etc)
+* Add pre-commit git hooks for tests and performance regressions
 * Write test based optimization routine
 * Auto build and cache binaries from contrib/GameSpecification (cython)
 * Write SimpleMotif with emphasis on minimum amount of code (refactor Motif as neccessary)
