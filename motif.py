@@ -61,10 +61,16 @@ class Motif(object):
               sparse and dense mode is allowed (matters for
               specialized propagate methods)
         """
+        print('MOTIF!!', id(self))###
         self._dense_data_type  = dense_data_type
         self._sparse_data_type = sparse_data_type
         self._mode_change_allowed = mode_change_allowed
         self._specialized_propagate = specialized_propagate
+
+        print('Logga!') ###
+        self.logger = logging.getLogger('motif')
+        self.logger.setLevel(logging.INFO)
+
 
         if sparse_data != None:
             # sparse_data provided
@@ -123,9 +129,6 @@ class Motif(object):
         self._save_history = save_history
         if self._save_history:
             self._history = []
-
-        self.logger = logging.getLogger('motif')
-        self.logger.setLevel(logging.INFO)
 
 
     def set_dim(self, dim):
@@ -391,6 +394,7 @@ class SquareGridMotif(Motif):
         Optional arguments in overloaded init:
         - `periodic`: Use periodic boundary conditions? (Default: True)
         """
+        print('SQUARE!!', id(self))
         self._periodic = kwargs['periodic']
 
 
@@ -528,6 +532,7 @@ class GameMotif(SquareGridMotif):
                                   button_action_map = None,
                                   )
     def __init__(self, *args, **kwargs):
+        print('GameMotif!!', id(self)) ###
         """
         Optional arguments in overloaded init:
         - `game_rule_dict`: Game rule dict mapping state to a list of

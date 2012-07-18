@@ -23,7 +23,7 @@ class ExtendedInitDecoratorFactory(object):
         self.intercept_kwargs = intercept_kwargs
 
     def __call__(self, init):
-
+        @wraps(init)
         def wrapper(_self, *args, **kwargs):
             intercepted_kwargs = {}
             for key, value in self.intercept_kwargs.iteritems():
@@ -31,8 +31,10 @@ class ExtendedInitDecoratorFactory(object):
                     intercepted_kwargs[key] = kwargs.pop(key)
                 else:
                     intercepted_kwargs[key] = value
-            self._superclass.__init__(_self, *args, **kwargs)
             init(_self, **intercepted_kwargs) # Need _self here?
+            #_self.__init__( ** intercepted_kwargs)
+            self._superclass.__init__(_self, *args, **kwargs)
+
         wrapper.__name__ = init.__name__
         cur_doc = init.__doc__
         super_doc = self._superclass.__init__.__doc__

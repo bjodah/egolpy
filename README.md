@@ -16,7 +16,7 @@ In order to get a copy of Egolpy execute:
 
 In order to get stated execute e.g.:
 
-    python egolpy.py -x 80 -y 80 -W 400 -H 400 -r 4gol.rules -p -l 4gol.txt -s 4gol_save.txt -n 2 -u 200
+    python egolpy.py -W 800 -H 800 -x 100 -y 100 -n num_Three -m numpy -p -u 20
 
 (for further information on invocation see help by executing e.g. `python egolpy.py --help`)
 
@@ -53,54 +53,7 @@ In the generalized rules employed in this program a list of rules are looked up 
 For larger sets of states and outcomes these dictionaries can become quite large why it may be beneficial to write a small script generating these rules data structures. For how to accomplish this see "Generating rules"
 
 ## Generating rules
-The rules are stored as a pickled dictionary and you may edit the rules by hand or copy/modify one of the rule creating scripts (see e.g. `mk_egol_rules.py`). Also for convenice the `colormap` and `button_action_map` are stored in pickled together with the rules.
-
-Below is the script generating the basic rules of game:
-
-    import cPickle as pickle
-    import json
-
-    from egol_classes import DEAD, ALIVE, WHITE, BLACK
-
-    rules = {DEAD:  ([
-                       (1,2,ALIVE, {3: ALIVE}),     # Rule 4.
-                     ], DEAD),     # Note: range(1,2) == [1]
-             ALIVE: ([
-                       (1,2,ALIVE, {2: ALIVE, # Rule 2
-                                    3: ALIVE}), # Rule 2
-                     ], DEAD),   # catches rule 1 and 3
-                 }
-
-    colormap = {ALIVE: WHITE,
-                DEAD: BLACK}
-
-
-    button_action_map = {(1,0,0): ('state_setter',
-                                       (ALIVE,)
-                                       ),
-                         (0,0,1): ('state_setter',
-                                       (DEAD,)
-                                       ),}
-
-    pickle.dump((rules, colormap, button_action_map),
-                open('egol.rules','wb'))
-
-Here is how `rules` is read:
-* For each cell which is **DEAD**:
-    * Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
-        * If the number of **ALIVE** cells equals **3** the new state is **ALIVE**
-    * If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
-* For each cell which is **ALIVE**:
-    * Count number of **ALIVE** cells in neighbouring cell shells ranging **1** to **2** (not including 2 like pythons range command) e.g. 8 closest neighbours.
-        * If the number of **ALIVE** cells equals **2** or **3** the new state is **ALIVE**
-    * If no condition in the previous rules (1) was met: the new state is the default outcome: **DEAD**
-
-The colors used to represent the states are given in colormap, the mouse buttons is mapped to **state_setter** function in **button_action_map**
-
-After having edited the rules generating script *it is important to remember to generate the corresponding rules file*:
-    python mk_gol_rules.py
-
-Now we can invoke `egolpy.py` with `-r gol.rules`.
+The rules are stored as class definitions in contrib/GameSpecifiaction
 
 ## Possible future extensions
 Feel free to write them and make a pull request at github:
