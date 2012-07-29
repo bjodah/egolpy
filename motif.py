@@ -5,10 +5,11 @@ from __future__ import division, print_function
 
 
 # Stdlib imp.
-from itertools import product
 import sys
 import logging
-
+from itertools import product
+from array import array
+from functools import partial
 
 try:
     import cPickle as pickle
@@ -21,9 +22,12 @@ from collections import Counter
 from project_helpers import ExtendedInitDecoratorFactory,\
      memoize
 
-INT_NAN = None
 
+# Global def.
+INT_NAN = None
 logging.basicConfig()
+iarray = partial(array, 'i')
+
 
 
 #@with_storing_functionality
@@ -40,7 +44,7 @@ class Motif(object):
     def __init__(self, bgstate=0, sparse_data=None,
                  dense_data=None, dim = None,
                  sparse_data_type = dict,
-                 dense_data_type = list,
+                 dense_data_type = iarray, #list,
                  mode_change_allowed = True,
                  specialized_propagate = False,
                  save_history = False,
@@ -61,13 +65,11 @@ class Motif(object):
               sparse and dense mode is allowed (matters for
               specialized propagate methods)
         """
-        print('MOTIF!!', id(self))###
         self._dense_data_type  = dense_data_type
         self._sparse_data_type = sparse_data_type
         self._mode_change_allowed = mode_change_allowed
         self._specialized_propagate = specialized_propagate
 
-        print('Logga!') ###
         self.logger = logging.getLogger('motif')
         self.logger.setLevel(logging.INFO)
 
@@ -532,7 +534,6 @@ class GameMotif(SquareGridMotif):
                                   button_action_map = None,
                                   )
     def __init__(self, *args, **kwargs):
-        print('GameMotif!!', id(self)) ###
         """
         Optional arguments in overloaded init:
         - `game_rule_dict`: Game rule dict mapping state to a list of
